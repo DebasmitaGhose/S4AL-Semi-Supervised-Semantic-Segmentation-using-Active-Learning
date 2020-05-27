@@ -100,4 +100,6 @@ net = NeuralNetClassifier(
 
 #### Train the network
 
-#net.fit(train_ds, y)
+X, y, _, name, _ = next(iter(trainloader))
+print(name,y)
+#net.fit(X, y=None)
