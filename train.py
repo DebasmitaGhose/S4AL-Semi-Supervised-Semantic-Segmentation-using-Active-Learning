@@ -13,7 +13,7 @@ from skorch.callbacks import LRScheduler, Checkpoint
 import os
 import argparse
 
-from data import UCMDataSet
+from data.ucm_dataset import UCMDataSet
 
 torch.manual_seed(360);
 IMG_MEAN = np.array((104.00698793,116.66876762,122.67891434), dtype=np.float32)
@@ -24,7 +24,7 @@ TEST_DATA_DIRECTORY = '/home/amth_dg777/project/Satellite_Images'
 TEST_DATA_LIST_PATH = '/home/amth_dg777/project/Satellite_Images/ImageSets/test.txt' # TODO: MAKE NEW TEXT FILE
 
 #### Argument Parser
-parser = argparse.ArgumentParser(description="")
+parser = argparse.ArgumentParser(description="Arguments")
 parser.add_argument("--learning-rate", type=float, default=0.001,
                     help="Learning Rate")
 parser.add_argument("--batch-size", type=int, default=4,
