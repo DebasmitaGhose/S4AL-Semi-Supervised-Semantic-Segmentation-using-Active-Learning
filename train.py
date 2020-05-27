@@ -81,7 +81,7 @@ checkpoint = Checkpoint(f_params='best_model.pt', monitor='valid_acc_best')
 
 #### Neural Net Classifier
 net = NeuralNetClassifier(
-    PretrainedModel, 
+    vgg16, 
     criterion=nn.CrossEntropyLoss,
     lr=args.learning_rate,
     batch_size=args.batch_size,
@@ -100,4 +100,4 @@ net = NeuralNetClassifier(
 
 #### Train the network
 
-net.fit(train_ds, y)
+#net.fit(train_ds, y)
