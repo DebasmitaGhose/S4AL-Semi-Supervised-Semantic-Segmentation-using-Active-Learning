@@ -24,32 +24,35 @@ TEST_DATA_DIRECTORY = '/home/amth_dg777/project/Satellite_Images'
 TEST_DATA_LIST_PATH = '/home/amth_dg777/project/Satellite_Images/ImageSets/test.txt' # TODO: MAKE NEW TEXT FILE
 
 #### Argument Parser
-parser = argparse.ArgumentParser(description="Arguments")
-parser.add_argument("--learning-rate", type=float, default=0.001,
-                    help="Learning Rate")
-parser.add_argument("--batch-size", type=int, default=4,
-                    help="Batch Size")
-parser.add_argument("--num-epochs", type=int, default=100,
-                    help="Number of Epochs")
-parser.add_argument("--momentum", type=float, default=0.9,
-                    help="Momentum")
-parser.add_argument("--device", type=str, default="cuda",
-                    help="cuda/cpu")
-parser.add_argument("--random-scale", action="store_true",
-                    help="Whether to randomly scale the inputs during the training.")
-parser.add_argument("--random-mirror", action="store_true",
-                    help="Whether to randomly mirror the inputs during the training.")
-parser.add_argument("--input-size", type=str, default=INPUT_SIZE,
-                    help="Comma-separated string with height and width of images.")
-parser.add_argument("--train-data-dir", type=str, default=TRAIN_DATA_DIRECTORY,
-                    help="Path to the directory containing the PASCAL VOC dataset.")
-parser.add_argument("--train-data-list", type=str, default=TRAIN_DATA_LIST_PATH,
-                    help="Path to the file listing the images in the dataset.")
-parser.add_argument("--test-data-dir", type=str, default=TEST_DATA_DIRECTORY,
-                    help="Path to the directory containing the PASCAL VOC dataset.")
-parser.add_argument("--test-data-list", type=str, default=TEST_DATA_LIST_PATH,
-                    help="Path to the file listing the images in the dataset.")
-parser.parse_args()
+def get_arguments():
+    parser = argparse.ArgumentParser(description="Arguments")
+    parser.add_argument("--learning-rate", type=float, default=0.001,
+                        help="Learning Rate")
+    parser.add_argument("--batch-size", type=int, default=4,
+                        help="Batch Size")
+    parser.add_argument("--num-epochs", type=int, default=100,
+                        help="Number of Epochs")
+    parser.add_argument("--momentum", type=float, default=0.9,
+                        help="Momentum")
+    parser.add_argument("--device", type=str, default="cuda",
+                        help="cuda/cpu")
+    parser.add_argument("--random-scale", action="store_true",
+                        help="Whether to randomly scale the inputs during the training.")
+    parser.add_argument("--random-mirror", action="store_true",
+                        help="Whether to randomly mirror the inputs during the training.")
+    parser.add_argument("--input-size", type=str, default=INPUT_SIZE,
+                        help="Comma-separated string with height and width of images.")
+    parser.add_argument("--train-data-dir", type=str, default=TRAIN_DATA_DIRECTORY,
+                        help="Path to the directory containing the PASCAL VOC dataset.")
+    parser.add_argument("--train-data-list", type=str, default=TRAIN_DATA_LIST_PATH,
+                        help="Path to the file listing the images in the dataset.")
+    parser.add_argument("--test-data-dir", type=str, default=TEST_DATA_DIRECTORY,
+                        help="Path to the directory containing the PASCAL VOC dataset.")
+    parser.add_argument("--test-data-list", type=str, default=TEST_DATA_LIST_PATH,
+                        help="Path to the file listing the images in the dataset.")
+    return parser.parse_args()
+
+args = get_arguments()
 
 #### Dataloader Object
 
