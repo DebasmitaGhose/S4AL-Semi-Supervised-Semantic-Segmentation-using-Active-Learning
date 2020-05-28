@@ -24,10 +24,10 @@ class UCMDataSet(data.Dataset):
         if not max_iters==None:
 	        self.img_ids = self.img_ids * int(np.ceil(float(max_iters) / len(self.img_ids)))
         self.files = []
-        self.class_map = {'agricultural':1, 'airplane':2, 'baseballdiamond':3, 'beach':4, 'buildings':5, 'chaparral':6, 
-                         'denseresidential':7, 'forest':8, 'freeway':9, 'golfcourse':10, 'harbor':11, 'intersection':12,
-                         'mediumresidential':13, 'mobilehomepark':14, 'overpass':15, 'parkinglot':16, 'river':17, 'runway':18,
-                         'sparseresidential':19, 'storagetanks':20, 'tenniscourt':21}
+        self.class_map = {'agricultural':0, 'airplane':1, 'baseballdiamond':2, 'beach':3, 'buildings':4, 'chaparral':5, 
+                         'denseresidential':6, 'forest':7, 'freeway':8, 'golfcourse':9, 'harbor':10, 'intersection':11,
+                         'mediumresidential':12, 'mobilehomepark':13, 'overpass':14, 'parkinglot':15, 'river':16, 'runway':17,
+                         'sparseresidential':18, 'storagetanks':19, 'tenniscourt':20}
         #print(self.class_map)
         # for split in ["train", "trainval", "val"]:
         for name in self.img_ids:
@@ -57,7 +57,7 @@ class UCMDataSet(data.Dataset):
         datafiles = self.files[index]
         image = cv2.imread(datafiles["img"], -1)
         image = cv2.resize(image, (256,256), interpolation=cv2.INTER_CUBIC)
-        label = np.asarray(datafiles["label"], dtype=np.int32)
+        label = np.asarray(datafiles["label"])
         size = image.shape
         name = datafiles["name"]
         if self.scale:
@@ -92,7 +92,7 @@ class UCMDataSet(data.Dataset):
             flip = np.random.choice(2) * 2 - 1
             image = image[:, :, ::flip]
             #label = label[:, ::flip]
-        return image.copy(), label.copy(), np.array(size), name, index
+        return image.copy(), label.copy()#, np.array(size), name, index
 
 
 

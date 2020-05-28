@@ -71,7 +71,23 @@ testloader = data.DataLoader(test_dataset,
 
 #### Model
 vgg16 = models.vgg16(pretrained=True, progress=True)
-print(vgg16)
+
+class Vgg16Module(nn.Module):
+    def __init__(self):
+        super(Vgg16Module,self).__init__()
+        self.net = vgg16
+        self.final_layer = nn.Linear(1000,21)
+        self.log_softmax=nn.LogSoftmax()      
+
+    def forward(self,x):
+        x1 = self.net(x)
+        print('Passed Thru VGG')
+        y = self.final_layer(x1)
+        y_pred=self.log_softmax(y)
+        return y_pred
+
+model = Vgg16Module()
+#print(vgg16)
 
 #### Model Callbacks
 lrscheduler = LRScheduler(policy='StepLR', step_size=7, gamma=0.1)
@@ -81,25 +97,22 @@ checkpoint = Checkpoint(f_params='best_model.pt', monitor='valid_acc_best')
 
 #### Neural Net Classifier
 net = NeuralNetClassifier(
-    vgg16, 
-    criterion=nn.CrossEntropyLoss,
+    module=model,
+    criterion=nn.NLLLoss,
     lr=args.learning_rate,
     batch_size=args.batch_size,
     max_epochs=args.num_epochs,
-    module__output_features=2,
     optimizer=optim.SGD,
     optimizer__momentum=args.momentum,
-    iterator_train=trainloader,
-    iterator_train__shuffle=True,
-    iterator_train__num_workers=4,
-    iterator_valid__shuffle=True,
-    iterator_valid__num_workers=4,
+    train_split=None,
+    #iterator_train__shuffle=True,
+    #iterator_train__num_workers=1,
+    #iterator_train__dataset=train_dataset,
     callbacks=[lrscheduler, checkpoint],
     device=args.device # comment to train on cpu
 )
 
 #### Train the network
 
-X, y, _, name, _ = next(iter(trainloader))
-print(name,y)
-#net.fit(X, y=None)
+X, y = next(iter(trainloader))
+net.fit(train_dataset,y=None)
