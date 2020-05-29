@@ -18,6 +18,8 @@ from data.ucm_dataset import UCMDataSet
 from modAL.models import ActiveLearner
 from modAL.uncertainty import classifier_entropy
 
+from scipy.special import softmax
+
 torch.manual_seed(360);
 IMG_MEAN = np.array((104.00698793,116.66876762,122.67891434), dtype=np.float32)
 INPUT_SIZE = '321, 321'
@@ -180,17 +182,27 @@ for idx in range(n_queries):
     selected_names = list(names_pool[query_idx])
     names.extend(selected_names)
     print(len(names))
-    print(selected_names, idx)
+    #print(selected_names, idx)
     #print(X_pool[query_idx])
-    prediction_prob = net.predict_proba(X_pool[query_idx])
+    #prediction_prob = net.predict_proba(X_pool[query_idx])
+    #pred_class = np.argmax(prediction_prob, axis=1)
+    #class_prob = np.max(prediction_prob, axis=1)
+    #print(y_pool[query_idx], 'correct_class')
+    #print(pred_class, 'pred_class')
+    #print(class_prob, 'pred_prob')
+    learner.teach(
+        X=X_pool[query_idx], y=y_pool[query_idx], only_new=False,
+    )
+    prediction_prob = softmax(net.predict_proba(X_pool[query_idx]), axis=1) #0
+    y_pred = net.predict(X_pool[query_idx])
+    print(names_pool[query_idx], 'names')
     pred_class = np.argmax(prediction_prob, axis=1)
     class_prob = np.max(prediction_prob, axis=1)
     print(y_pool[query_idx], 'correct_class')
     print(pred_class, 'pred_class')
+    print(y_pred, 'y_pred')
     print(class_prob, 'pred_prob')
-    learner.teach(
-        X=X_pool[query_idx], y=y_pool[query_idx], only_new=False,
-    )
+
     #print(classifier_entropy(net, X_pool[query_idx]), 'classifier entropy')
     # remove queried instance from pool
     # 
