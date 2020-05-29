@@ -92,7 +92,7 @@ class UCMDataSet(data.Dataset):
             flip = np.random.choice(2) * 2 - 1
             image = image[:, :, ::flip]
             #label = label[:, ::flip]
-        return image.copy(), label.copy()#, np.array(size), name, index
+        return (image.copy(),name), label.copy()#, np.array(size), name, index
 
 
 

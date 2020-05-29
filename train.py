@@ -16,6 +16,7 @@ import argparse
 from data.ucm_dataset import UCMDataSet
 
 from modAL.models import ActiveLearner
+from modAL.uncertainty import classifier_entropy
 
 torch.manual_seed(360);
 IMG_MEAN = np.array((104.00698793,116.66876762,122.67891434), dtype=np.float32)
@@ -71,6 +72,7 @@ test_dataset = UCMDataSet(args.test_data_dir, args.test_data_list, crop_size=inp
 testloader = data.DataLoader(test_dataset,
                 batch_size=args.batch_size, shuffle=True, num_workers=0, pin_memory=True)
 
+names=[]
 #### Model
 vgg16 = models.vgg16(pretrained=True, progress=True)
 
@@ -122,9 +124,10 @@ net = NeuralNetClassifier(
 #X_test, y_test = next(iter(testloader))
 
 active_ucm_dataloader = data.DataLoader(train_dataset,
-                batch_size=176, shuffle=True, num_workers=0, pin_memory=True)#1769
-X_train, y_train = next(iter(active_ucm_dataloader))
+                batch_size=1769, shuffle=True, num_workers=0, pin_memory=True)#1769
+(X_train,name), y_train = next(iter(active_ucm_dataloader))
 print(np.shape(X_train),np.shape(y_train))
+name=np.asarray(name)
 #X_train = X_train.reshape(176, 3, 321, 321)#1769
 #y_train = y_train.reshape(176, 3, 321, 321)
 
@@ -143,14 +146,19 @@ print(np.shape(X_train),np.shape(y_train))
 # assemble initial data
 n_initial = 100 ######### problem with batch size
 initial_idx = np.random.choice(range(len(X_train)), size=n_initial, replace=False)
+selected_names = list(name[initial_idx])
+#names.extend(selected_names)
+
 X_initial = X_train[initial_idx]
 y_initial = y_train[initial_idx]
+names_initial = name[initial_idx]
 print(np.shape(X_initial), 'X_seed')
 print(np.shape(y_initial), 'y_seed')
 
 # generate the pool
 # remove the initial data from the training dataset
 X_pool = np.delete(X_train, initial_idx, axis=0)
+names_pool = np.delete(name, initial_idx, axis=0)
 y_pool = np.delete(y_train, initial_idx, axis=0)
 print(np.shape(X_pool), 'X_pool')
 print(np.shape(y_pool), 'y_pool')
@@ -162,17 +170,30 @@ learner = ActiveLearner(
     estimator=net,
     X_training=X_initial, y_training=y_initial,
 )
-
+#1770/100
 # the active learning loop
-n_queries = 10
+n_queries = 180
 for idx in range(n_queries):
     print('Query no. %d' % (idx + 1))
     query_idx, query_instance = learner.query(X_pool, n_instances=10)
+    #print(query_instance)
+    selected_names = list(names_pool[query_idx])
+    names.extend(selected_names)
+    print(len(names))
+    print(selected_names, idx)
+    #print(X_pool[query_idx])
+    prediction_prob = net.predict_proba(X_pool[query_idx])
+    pred_class = np.argmax(prediction_prob, axis=1)
+    class_prob = np.max(prediction_prob, axis=1)
+    print(y_pool[query_idx], 'correct_class')
+    print(pred_class, 'pred_class')
+    print(class_prob, 'pred_prob')
     learner.teach(
         X=X_pool[query_idx], y=y_pool[query_idx], only_new=False,
     )
+    #print(classifier_entropy(net, X_pool[query_idx]), 'classifier entropy')
     # remove queried instance from pool
     # 
     X_pool = np.delete(X_pool, query_idx, axis=0)
     y_pool = np.delete(y_pool, query_idx, axis=0)
-
+    name_pool = np.delete(names_pool, query_idx, axis=0)
