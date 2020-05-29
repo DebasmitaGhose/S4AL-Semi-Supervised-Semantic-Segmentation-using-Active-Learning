@@ -28,11 +28,11 @@ TEST_DATA_LIST_PATH = '/home/amth_dg777/project/Satellite_Images/ImageSets/test.
 #### Argument Parser
 def get_arguments():
     parser = argparse.ArgumentParser(description="Arguments")
-    parser.add_argument("--learning-rate", type=float, default=0.001,
+    parser.add_argument("--learning-rate", type=float, default=0.00001,
                         help="Learning Rate")
-    parser.add_argument("--batch-size", type=int, default=100,
+    parser.add_argument("--batch-size", type=int, default=4,
                         help="Batch Size")
-    parser.add_argument("--num-epochs", type=int, default=1,
+    parser.add_argument("--num-epochs", type=int, default=10,
                         help="Number of Epochs")
     parser.add_argument("--momentum", type=float, default=0.9,
                         help="Momentum")
@@ -83,10 +83,12 @@ class Vgg16Module(nn.Module):
 
     def forward(self,x):
         x1 = self.net(x)
-        #print('Passed Thru VGG')
+        #print('Passed Thru VGG', x1)
         y = self.final_layer(x1)
-        y_pred=self.log_softmax(y)
-        return y_pred
+        #print(y, 'y')
+        #y_pred=self.log_softmax(y)
+        #print(y_pred, 'y_pred')
+        return y
 
 model = Vgg16Module()
 #print(vgg16)
@@ -100,7 +102,7 @@ checkpoint = Checkpoint(dirname = 'exp', f_params='best_model.pt', monitor='trai
 #### Neural Net Classifier
 net = NeuralNetClassifier(
     module=model,
-    criterion=nn.NLLLoss,
+    criterion=nn.CrossEntropyLoss,
     lr=args.learning_rate,
     batch_size=args.batch_size,
     max_epochs=args.num_epochs,
@@ -110,28 +112,36 @@ net = NeuralNetClassifier(
     #iterator_train__shuffle=True,
     #iterator_train__num_workers=1,
     #iterator_train__dataset=train_dataset,
-    callbacks=[lrscheduler],
+    #callbacks=[lrscheduler],
     device=args.device # comment to train on cpu
 )
 
 #### Train the network
 
-X_train, y_train = next(iter(trainloader))
-X_test, y_test = next(iter(testloader))
-#net.fit(train_dataset,y)
+#X_train, y_train = next(iter(trainloader))
+#X_test, y_test = next(iter(testloader))
+
+active_ucm_dataloader = data.DataLoader(train_dataset,
+                batch_size=176, shuffle=True, num_workers=0, pin_memory=True)#1769
+X_train, y_train = next(iter(active_ucm_dataloader))
+print(np.shape(X_train),np.shape(y_train))
+#X_train = X_train.reshape(176, 3, 321, 321)#1769
+#y_train = y_train.reshape(176, 3, 321, 321)
+
+#y_pred = net.fit(train_dataset,y=None)
+#print(y_pred, 'after fit')
 #print(net.history)
 #net.save_params(f_params='model.pkl', f_optimizer='opt.pkl', f_history='history.json')
 #print(np.shape(X_train))
 
-
 #### Split X and y into seed and pool
 ########### SMALL MEMORY ##############
 
-X_train = X_train[:100]
-y_train = y_train[:100]
+#X_train = X_train[:100]
+#y_train = y_train[:100]
 
 # assemble initial data
-n_initial = 20
+n_initial = 100 ######### problem with batch size
 initial_idx = np.random.choice(range(len(X_train)), size=n_initial, replace=False)
 X_initial = X_train[initial_idx]
 y_initial = y_train[initial_idx]
@@ -140,8 +150,8 @@ print(np.shape(y_initial), 'y_seed')
 
 # generate the pool
 # remove the initial data from the training dataset
-X_pool = np.delete(X_train, initial_idx, axis=0)[:5000]
-y_pool = np.delete(y_train, initial_idx, axis=0)[:5000]
+X_pool = np.delete(X_train, initial_idx, axis=0)
+y_pool = np.delete(y_train, initial_idx, axis=0)
 print(np.shape(X_pool), 'X_pool')
 print(np.shape(y_pool), 'y_pool')
 
@@ -154,14 +164,15 @@ learner = ActiveLearner(
 )
 
 # the active learning loop
-n_queries = 2
+n_queries = 10
 for idx in range(n_queries):
     print('Query no. %d' % (idx + 1))
-    query_idx, query_instance = learner.query(X_pool, n_instances=5)
+    query_idx, query_instance = learner.query(X_pool, n_instances=10)
     learner.teach(
-        X=X_pool[query_idx], y=y_pool[query_idx], only_new=True,
+        X=X_pool[query_idx], y=y_pool[query_idx], only_new=False,
     )
     # remove queried instance from pool
+    # 
     X_pool = np.delete(X_pool, query_idx, axis=0)
     y_pool = np.delete(y_pool, query_idx, axis=0)
 
