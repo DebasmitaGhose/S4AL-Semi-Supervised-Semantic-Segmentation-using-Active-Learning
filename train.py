@@ -14,7 +14,7 @@ import os
 import argparse
 
 from data.ucm_dataset import UCMDataSet
-
+import modAL
 from modAL.models import ActiveLearner
 from modAL.uncertainty import classifier_entropy
 
@@ -113,9 +113,6 @@ net = NeuralNetClassifier(
     optimizer=optim.SGD,
     optimizer__momentum=args.momentum,
     train_split=None,
-    #iterator_train__shuffle=True,
-    #iterator_train__num_workers=1,
-    #iterator_train__dataset=train_dataset,
     #callbacks=[lrscheduler],
     device=args.device # comment to train on cpu
 )
@@ -126,27 +123,18 @@ net = NeuralNetClassifier(
 #X_test, y_test = next(iter(testloader))
 
 active_ucm_dataloader = data.DataLoader(train_dataset,
-                batch_size=1769, shuffle=True, num_workers=0, pin_memory=True)#1769
+                batch_size=1679, shuffle=True, num_workers=0, pin_memory=True)#1679
 (X_train,name), y_train = next(iter(active_ucm_dataloader))
-print(np.shape(X_train),np.shape(y_train))
+#print(np.shape(X_train),np.shape(y_train))
 name=np.asarray(name)
-#X_train = X_train.reshape(176, 3, 321, 321)#1769
-#y_train = y_train.reshape(176, 3, 321, 321)
-
-#y_pred = net.fit(train_dataset,y=None)
-#print(y_pred, 'after fit')
-#print(net.history)
-#net.save_params(f_params='model.pkl', f_optimizer='opt.pkl', f_history='history.json')
-#print(np.shape(X_train))
 
 #### Split X and y into seed and pool
 ########### SMALL MEMORY ##############
 
-#X_train = X_train[:100]
-#y_train = y_train[:100]
 
 # assemble initial data
-n_initial = 100 ######### problem with batch size
+np.random.seed(1234)
+n_initial = 10
 initial_idx = np.random.choice(range(len(X_train)), size=n_initial, replace=False)
 selected_names = list(name[initial_idx])
 #names.extend(selected_names)
@@ -154,58 +142,58 @@ selected_names = list(name[initial_idx])
 X_initial = X_train[initial_idx]
 y_initial = y_train[initial_idx]
 names_initial = name[initial_idx]
-print(np.shape(X_initial), 'X_seed')
-print(np.shape(y_initial), 'y_seed')
+#print(np.shape(X_initial), 'X_seed')
+#print(np.shape(y_initial), 'y_seed')
 
 # generate the pool
 # remove the initial data from the training dataset
 X_pool = np.delete(X_train, initial_idx, axis=0)
 names_pool = np.delete(name, initial_idx, axis=0)
 y_pool = np.delete(y_train, initial_idx, axis=0)
-print(np.shape(X_pool), 'X_pool')
-print(np.shape(y_pool), 'y_pool')
+#print(np.shape(X_pool), 'X_pool')
+#print(np.shape(y_pool), 'y_pool')
 
 #### Active Learner
 
 # initialize ActiveLearner
 learner = ActiveLearner(
     estimator=net,
+    query_strategy=modAL.uncertainty.uncertainty_sampling,
     X_training=X_initial, y_training=y_initial,
 )
-#1770/100
+
 # the active learning loop
-n_queries = 180
+prediction_probabilities = []
+n_queries = 166
 for idx in range(n_queries):
     print('Query no. %d' % (idx + 1))
     query_idx, query_instance = learner.query(X_pool, n_instances=10)
-    #print(query_instance)
     selected_names = list(names_pool[query_idx])
     names.extend(selected_names)
-    print(len(names))
-    #print(selected_names, idx)
-    #print(X_pool[query_idx])
-    #prediction_prob = net.predict_proba(X_pool[query_idx])
-    #pred_class = np.argmax(prediction_prob, axis=1)
-    #class_prob = np.max(prediction_prob, axis=1)
-    #print(y_pool[query_idx], 'correct_class')
-    #print(pred_class, 'pred_class')
-    #print(class_prob, 'pred_prob')
     learner.teach(
         X=X_pool[query_idx], y=y_pool[query_idx], only_new=False,
     )
     prediction_prob = softmax(net.predict_proba(X_pool[query_idx]), axis=1) #0
     y_pred = net.predict(X_pool[query_idx])
-    print(names_pool[query_idx], 'names')
     pred_class = np.argmax(prediction_prob, axis=1)
     class_prob = np.max(prediction_prob, axis=1)
+    class_prob = list(class_prob)
+    
+    prediction_probabilities.extend(class_prob)
+    
+    print(selected_names,'names')
     print(y_pool[query_idx], 'correct_class')
     print(pred_class, 'pred_class')
     print(y_pred, 'y_pred')
     print(class_prob, 'pred_prob')
-
-    #print(classifier_entropy(net, X_pool[query_idx]), 'classifier entropy')
-    # remove queried instance from pool
-    # 
+    
+    
     X_pool = np.delete(X_pool, query_idx, axis=0)
     y_pool = np.delete(y_pool, query_idx, axis=0)
-    name_pool = np.delete(names_pool, query_idx, axis=0)
+    names_pool = np.delete(names_pool, query_idx, axis=0)
+   
+# save the name list and the prediction list:
+names_arr = np.array(names)
+prediction_prob_arr = np.array(prediction_probabilities)
+np.save('uncertainity_sampling_names', names_arr) 
+np.save('uncertainity_sampling_prediction_probs', prediction_prob_arr)
