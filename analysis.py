@@ -1,9 +1,10 @@
 import numpy as np
 import collections
 
-s4gan_names = np.load('names_s4gan.npy')
-uncert_names = np.load('uncertainity_sampling_names.npy')
-
+s4gan_names = np.load('s4gan_names_with_seed.npy')
+#uncert_names = np.load('uncertainity_sampling_names.npy')
+#uncert_names = np.load('entropy/entropy_names.npy')
+uncert_names = np.load('margin/margin_names.npy')
 #print(np.shape(s4gan_names), 's4gan')
 #print(np.shape(uncert_names), 'uncert')
 

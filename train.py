@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
+import pdb
 from torchvision import datasets, models, transforms
 import torchvision.models as models
 from torch.utils import data
@@ -16,8 +17,6 @@ import argparse
 from data.ucm_dataset import UCMDataSet
 import modAL
 from modAL.models import ActiveLearner
-from modAL.uncertainty import classifier_entropy
-
 from scipy.special import softmax
 
 torch.manual_seed(360);
@@ -31,6 +30,8 @@ TEST_DATA_LIST_PATH = '/home/amth_dg777/project/Satellite_Images/ImageSets/test.
 #### Argument Parser
 def get_arguments():
     parser = argparse.ArgumentParser(description="Arguments")
+    parser.add_argument("--query-strategy", type=str, default="uncertainty",
+                        help="uncertainty, margin, entropy sampling")
     parser.add_argument("--learning-rate", type=float, default=0.00001,
                         help="Learning Rate")
     parser.add_argument("--batch-size", type=int, default=4,
@@ -58,6 +59,10 @@ def get_arguments():
     return parser.parse_args()
 
 args = get_arguments()
+
+def makedirs(dirs):
+    if not os.path.exists(dirs):
+        os.makedirs(dirs)
 
 #### Dataloader Object
 
@@ -129,7 +134,9 @@ active_ucm_dataloader = data.DataLoader(train_dataset,
 name=np.asarray(name)
 
 #### Split X and y into seed and pool
-########### SMALL MEMORY ##############
+
+dir_name = args.query_strategy
+makedirs(dir_name)
 
 
 # assemble initial data
@@ -155,18 +162,43 @@ y_pool = np.delete(y_train, initial_idx, axis=0)
 
 #### Active Learner
 
+# QUERY strategy 1
 # initialize ActiveLearner
-learner = ActiveLearner(
-    estimator=net,
-    query_strategy=modAL.uncertainty.uncertainty_sampling,
-    X_training=X_initial, y_training=y_initial,
-)
 
+if args.query_strategy == "uncertainty":
+    learner = ActiveLearner(estimator=net,
+                            query_strategy=modAL.uncertainty.uncertainty_sampling,
+                            X_training=X_initial, y_training=y_initial,
+    )
+
+# QUERY strategy 2
+####Yet another query strategy########################
+elif args.query_strategy == "margin":
+    learner = ActiveLearner(estimator=net,
+                            query_strategy=modAL.uncertainty.margin_sampling,
+                            X_training=X_initial, y_training=y_initial,
+    )
+
+######################################################
+# QUERY strategy 3
+elif args.query_strategy == "entropy":
+    learner = ActiveLearner(estimator=net,
+                            query_strategy=modAL.uncertainty.entropy_sampling,
+                            X_training=X_initial, y_training=y_initial,
+    )
+
+#################---------------#####################
+
+
+
+
+print(learner)
 # the active learning loop
 prediction_probabilities = []
 n_queries = 166
 for idx in range(n_queries):
     print('Query no. %d' % (idx + 1))
+    #pdb.set_trace()    
     query_idx, query_instance = learner.query(X_pool, n_instances=10)
     selected_names = list(names_pool[query_idx])
     names.extend(selected_names)
@@ -195,5 +227,9 @@ for idx in range(n_queries):
 # save the name list and the prediction list:
 names_arr = np.array(names)
 prediction_prob_arr = np.array(prediction_probabilities)
-np.save('uncertainity_sampling_names', names_arr) 
-np.save('uncertainity_sampling_prediction_probs', prediction_prob_arr)
+
+names_file = os.path.join(dir_name, args.query_strategy + '_names.npy')
+probs_file = os.path.join(dir_name, args.query_strategy + '_probs.npy')
+
+np.save(names_file, names_arr) 
+np.save(probs_file, prediction_prob_arr)
