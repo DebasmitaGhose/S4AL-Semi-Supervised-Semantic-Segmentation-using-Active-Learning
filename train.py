@@ -21,11 +21,11 @@ from scipy.special import softmax
 
 torch.manual_seed(360);
 IMG_MEAN = np.array((104.00698793,116.66876762,122.67891434), dtype=np.float32)
-INPUT_SIZE = '321, 321'
-TRAIN_DATA_DIRECTORY = '/home/amth_dg777/project/Satellite_Images'
-TRAIN_DATA_LIST_PATH = '/home/amth_dg777/project/Satellite_Images/ImageSets/train.txt' # TODO: MAKE NEW TEXT FILE
-TEST_DATA_DIRECTORY = '/home/amth_dg777/project/Satellite_Images'
-TEST_DATA_LIST_PATH = '/home/amth_dg777/project/Satellite_Images/ImageSets/test.txt' # TODO: MAKE NEW TEXT FILE
+INPUT_SIZE = '256, 256'
+TRAIN_DATA_DIRECTORY = '/home/dg777/project/Satellite_Images'
+TRAIN_DATA_LIST_PATH = '/home/dg777/project/Satellite_Images/ImageSets/train.txt' # TODO: MAKE NEW TEXT FILE
+TEST_DATA_DIRECTORY = '/home/dg777/project/Satellite_Images'
+TEST_DATA_LIST_PATH = '/home/dg777/project/Satellite_Images/ImageSets/test.txt' # TODO: MAKE NEW TEXT FILE
 
 #### Argument Parser
 def get_arguments():
@@ -55,14 +55,30 @@ def get_arguments():
     parser.add_argument("--test-data-dir", type=str, default=TEST_DATA_DIRECTORY,
                         help="Path to the directory containing the PASCAL VOC dataset.")
     parser.add_argument("--test-data-list", type=str, default=TEST_DATA_LIST_PATH,
-                        help="Path to the file listing the images in the dataset.")
+                        help="Path to the file listing the images in the dataset.") 
+    parser.add_argument("--labeled-ratio", type=str, default="0.05",
+                        help="labeled ratio")
+ 
     return parser.parse_args()
 
 args = get_arguments()
 
+N_total = 1679
+# initial pool size = 0.5*(labeled_ratio*N_total)
+initial_pool_dict = {"0.02":17,
+"0.05":43,
+"0.125":106,
+"0.20":169,
+"0.33":278,
+"0.5":423
+}
+
+
 def makedirs(dirs):
     if not os.path.exists(dirs):
         os.makedirs(dirs)
+
+print("QUERY STRATEGY = ", args.query_strategy)
 
 #### Dataloader Object
 
@@ -83,10 +99,14 @@ names=[]
 #### Model
 vgg16 = models.vgg16(pretrained=True, progress=True)
 
+res50 = models.resnet50(pretrained=True, progress=True)
+
+res101 = models.resnet101(pretrained=True, progress=True)
+
 class Vgg16Module(nn.Module):
     def __init__(self):
         super(Vgg16Module,self).__init__()
-        self.net = vgg16
+        self.net = res50
         self.final_layer = nn.Linear(1000,21)
         self.log_softmax=nn.LogSoftmax()      
 
@@ -141,9 +161,11 @@ makedirs(dir_name)
 
 # assemble initial data
 np.random.seed(1234)
-n_initial = 10
+n_initial = initial_pool_dict[args.labeled_ratio]
+print("Initial pool size = ", n_initial)
 initial_idx = np.random.choice(range(len(X_train)), size=n_initial, replace=False)
 selected_names = list(name[initial_idx])
+print(selected_names, 'selected names')
 #names.extend(selected_names)
 
 X_initial = X_train[initial_idx]
@@ -151,6 +173,8 @@ y_initial = y_train[initial_idx]
 names_initial = name[initial_idx]
 #print(np.shape(X_initial), 'X_seed')
 #print(np.shape(y_initial), 'y_seed')
+
+#import pdb; pdb.set_trace()
 
 # generate the pool
 # remove the initial data from the training dataset
@@ -192,32 +216,104 @@ elif args.query_strategy == "entropy":
 
 
 
-print(learner)
+#print(learner)
 # the active learning loop
 prediction_probabilities = []
-n_queries = 166
+
+
+'''
+n_initial is 50% of the labeled ratio
+hence we want a total of 2*n_inital number of examples for each labeled ratio from AL to feed into s4gan
+target = 2*n_inital
+
+for each query, we are querying 0.1*n_inital samples
+query_samples_per_iter = np.floor(0.1*n_inital)
+
+
+n_queries  = target/query_samples_per_iter
+'''
+
+target = 2*n_initial
+query_samples_per_iter = int(np.floor(0.1*n_initial))
+print(query_samples_per_iter)
+n_queries  = int(np.ceil(target/query_samples_per_iter))
+
+
+
 for idx in range(n_queries):
     print('Query no. %d' % (idx + 1))
-    #pdb.set_trace()    
-    query_idx, query_instance = learner.query(X_pool, n_instances=10)
+    print(n_queries)
+    #import pdb; pdb.set_trace()    
+    #X_pool = X_pool.detach().numpy()
+    #y_pool = y_pool.detach().numpy()
+    #learner = learner.detach().numpy()
+    query_idx, query_instance = learner.query(X_pool, n_instances=query_samples_per_iter)
     selected_names = list(names_pool[query_idx])
     names.extend(selected_names)
-    learner.teach(
-        X=X_pool[query_idx], y=y_pool[query_idx], only_new=False,
-    )
-    prediction_prob = softmax(net.predict_proba(X_pool[query_idx]), axis=1) #0
-    y_pred = net.predict(X_pool[query_idx])
+    X = X_pool[query_idx]
+    #learner.teach(
+    #    X=X_pool[query_idx], y=y_pool[query_idx], only_new=False,
+    #)
+    dense_idx = np.where(y_pool==6)
+    agri_idx = np.where(y_pool==0)
+    '''
+    print("DENSE")
+    prediction_prob = softmax(net.predict_proba(X_pool[dense_idx]), axis=1) #0 # query_idx
+    y_pred = net.predict(X_pool[dense_idx]) #query_idx
     pred_class = np.argmax(prediction_prob, axis=1)
     class_prob = np.max(prediction_prob, axis=1)
     class_prob = list(class_prob)
     
     prediction_probabilities.extend(class_prob)
     
-    print(selected_names,'names')
-    print(y_pool[query_idx], 'correct_class')
-    print(pred_class, 'pred_class')
+
+    #print(selected_names,'names')
+    #print(y_pool[dense_idx], 'correct_class')
+    #print(pred_class, 'pred_class')
     print(y_pred, 'y_pred')
     print(class_prob, 'pred_prob')
+
+    print("AGRI")
+
+    prediction_prob = softmax(net.predict_proba(X_pool[agri_idx]), axis=1) #0 # query_idx
+    y_pred = net.predict(X_pool[agri_idx]) #query_idx
+    pred_class = np.argmax(prediction_prob, axis=1)
+    class_prob = np.max(prediction_prob, axis=1)
+    class_prob = list(class_prob)
+    
+    prediction_probabilities.extend(class_prob)
+
+
+    #print(selected_names,'names')
+    #print(y_pool[dense_idx], 'correct_class')
+    #print(pred_class, 'pred_class')
+    print(y_pred, 'y_pred')
+    print(class_prob, 'pred_prob')
+
+
+
+    print("QUERY")
+    '''
+    prediction_prob = softmax(net.predict_proba(X_pool[query_idx]), axis=1) #0 # query_idx
+    y_pred = net.predict(X_pool[query_idx]) #query_idx
+    pred_class = np.argmax(prediction_prob, axis=1)
+    class_prob = np.max(prediction_prob, axis=1)
+    class_prob = list(class_prob)
+
+    prediction_probabilities.extend(class_prob)
+
+
+
+    print(selected_names,'names')
+    print(y_pool[query_idx], 'correct_class')
+    #print(pred_class, 'pred_class')
+    print(y_pred, 'y_pred')
+    print(class_prob, 'pred_prob')
+
+
+    learner.teach(
+        X=X_pool[query_idx], y=y_pool[query_idx], only_new=False,
+    )
     
     
     X_pool = np.delete(X_pool, query_idx, axis=0)
@@ -225,11 +321,11 @@ for idx in range(n_queries):
     names_pool = np.delete(names_pool, query_idx, axis=0)
    
 # save the name list and the prediction list:
-names_arr = np.array(names)
-prediction_prob_arr = np.array(prediction_probabilities)
+names_arr = np.array(names[:target])
+prediction_prob_arr = np.array(prediction_probabilities[:target])
 
-names_file = os.path.join(dir_name, args.query_strategy + '_names.npy')
-probs_file = os.path.join(dir_name, args.query_strategy + '_probs.npy')
+names_file = os.path.join(dir_name, args.query_strategy + '_names_'+ args.labeled_ratio + '.npy')
+probs_file = os.path.join(dir_name, args.query_strategy + '_probs_'+ args.labeled_ratio + '.npy')
 
 np.save(names_file, names_arr) 
 np.save(probs_file, prediction_prob_arr)
