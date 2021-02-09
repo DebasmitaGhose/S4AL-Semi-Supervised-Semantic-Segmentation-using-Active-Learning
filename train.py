@@ -64,15 +64,17 @@ def get_arguments():
 args = get_arguments()
 
 N_total = 1679
-# initial pool size = 0.5*(labeled_ratio*N_total)
-initial_pool_dict = {"0.02":17,
-"0.05":43,
-"0.125":106,
-"0.20":169,
-"0.33":278,
-"0.5":423
+# initial pool size = 0.1*(labeled_ratio*N_total)
+initial_pool_dict = {"0.02":4,
+"0.05":8,
+"0.125":21,
+"0.20":35,
+"0.33":56,
+"0.5":85
 }
 
+names_array = ['agricultural', 'airplane', 'baseballdiamond', 'beach', 'buildings', 'chapparal', 'denseresidential', 'forest', 'freeway',
+'golfcourse', 'harbor', 'intersection', 'mediumresidential', 'mobilehomepark', 'overpass', 'parkinglot', 'river', 'runway', 'sparseresidential', 'storagetanks','tenniscourt']
 
 def makedirs(dirs):
     if not os.path.exists(dirs):
@@ -160,7 +162,7 @@ makedirs(dir_name)
 
 
 # assemble initial data
-np.random.seed(1234)
+np.random.seed(1234) 
 n_initial = initial_pool_dict[args.labeled_ratio]
 print("Initial pool size = ", n_initial)
 initial_idx = np.random.choice(range(len(X_train)), size=n_initial, replace=False)
@@ -182,7 +184,7 @@ X_pool = np.delete(X_train, initial_idx, axis=0)
 names_pool = np.delete(name, initial_idx, axis=0)
 y_pool = np.delete(y_train, initial_idx, axis=0)
 #print(np.shape(X_pool), 'X_pool')
-#print(np.shape(y_pool), 'y_pool')
+print(y_pool[:20], 'y_pool')
 
 #### Active Learner
 
@@ -232,10 +234,11 @@ query_samples_per_iter = np.floor(0.1*n_inital)
 
 n_queries  = target/query_samples_per_iter
 '''
-
-target = 2*n_initial
-query_samples_per_iter = int(np.floor(0.1*n_initial))
-print(query_samples_per_iter)
+print("n_initial = ", n_initial)
+target = 10*n_initial # 11 - 0.05, 10 - 0.125
+print("target = ", target)
+query_samples_per_iter = int(np.ceil(0.5*n_initial))
+print("query_samples_per_iter = ", query_samples_per_iter)
 n_queries  = int(np.ceil(target/query_samples_per_iter))
 
 
@@ -307,7 +310,7 @@ for idx in range(n_queries):
     print(selected_names,'names')
     print(y_pool[query_idx], 'correct_class')
     #print(pred_class, 'pred_class')
-    print(y_pred, 'y_pred')
+    print([names_array[i] for i in y_pred])
     print(class_prob, 'pred_prob')
 
 
