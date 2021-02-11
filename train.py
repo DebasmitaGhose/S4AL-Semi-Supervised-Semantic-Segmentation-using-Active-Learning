@@ -21,11 +21,12 @@ from scipy.special import softmax
 
 torch.manual_seed(360);
 IMG_MEAN = np.array((104.00698793,116.66876762,122.67891434), dtype=np.float32)
-INPUT_SIZE = '256, 256'
+INPUT_SIZE = '320, 320'
+
 TRAIN_DATA_DIRECTORY = '/home/dg777/project/Satellite_Images'
-TRAIN_DATA_LIST_PATH = '/home/dg777/project/Satellite_Images/ImageSets/train.txt' # TODO: MAKE NEW TEXT FILE
+TRAIN_DATA_LIST_PATH = '/home/dg777/project/Satellite_Images/UCMImageSets/train.txt' # TODO: MAKE NEW TEXT FILE
 TEST_DATA_DIRECTORY = '/home/dg777/project/Satellite_Images'
-TEST_DATA_LIST_PATH = '/home/dg777/project/Satellite_Images/ImageSets/test.txt' # TODO: MAKE NEW TEXT FILE
+TEST_DATA_LIST_PATH = '/home/dg777/project/Satellite_Images/UCMImageSets/test.txt' # TODO: MAKE NEW TEXT FILE
 
 #### Argument Parser
 def get_arguments():

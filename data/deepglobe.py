@@ -7,12 +7,13 @@ import collections
 import torch
 import torchvision
 import cv2
+import json
 from torch.utils import data
 from PIL import Image
 import re
 
 class DeepGlobeDataSet(data.Dataset):
-    def __init__(self, root, list_path, max_iters=None, crop_size=(321, 321), mean=(128, 128, 128), scale=True, mirror=True, ignore_label=255):
+    def __init__(self, root, list_path, max_iters=None, crop_size=(321, 321), mean=(128, 128, 128), scale=True, mirror=True, ignore_label=6):
         self.root = root
         self.list_path = list_path
         self.crop_h, self.crop_w = crop_size
@@ -24,23 +25,17 @@ class DeepGlobeDataSet(data.Dataset):
         if not max_iters==None:
 	        self.img_ids = self.img_ids * int(np.ceil(float(max_iters) / len(self.img_ids)))
         self.files = []
-        self.class_map = {'agricultural':0, 'airplane':1, 'baseballdiamond':2, 'beach':3, 'buildings':4, 'chaparral':5, 
-                         'denseresidential':6, 'forest':7, 'freeway':8, 'golfcourse':9, 'harbor':10, 'intersection':11,
-                         'mediumresidential':12, 'mobilehomepark':13, 'overpass':14, 'parkinglot':15, 'river':16, 'runway':17,
-                         'sparseresidential':18, 'storagetanks':19, 'tenniscourt':20}
+        self.class_map = json.load(open('/home/dg777/project/Satellite_Images/DeepGlobeImageSets/class_map.json','r'))
+        
+        self.class_mappings = {'urban_land':0,'agriculture_land':1,'rangeland':2,'forest_land':3,'water':4,'barren_land':5} 
         #print(self.class_map)
         # for split in ["train", "trainval", "val"]:
         for name in self.img_ids:
-            #print(name)
             img_file = osp.join(self.root, "DeepGlobe_Images/%s_sat.jpg" % name)
-            #label_file = osp.join(self.root, "UCMerced_Labels/%s.png" % name)
-            template = re.compile("([a-zA-Z]+)([0-9]+)") 
-            class_name = template.match(name).groups()[0] 
-            class_id = self.class_map[class_name]
-            #print(class_id)     
+            class_id = self.class_map[name]
             self.files.append({
                 "img": img_file,
-                "label": class_id,
+                "label": self.class_mappings[class_id],
                 "name": name
             })
 
@@ -59,15 +54,15 @@ class DeepGlobeDataSet(data.Dataset):
         image = cv2.resize(image, (320,320), interpolation=cv2.INTER_CUBIC)
         label = np.asarray(datafiles["label"])
         size = image.shape
-        name = datafiles["name"]
         if self.scale:
             image, label = self.generate_scale_label(image, label)
+        name = datafiles["name"]
         image = np.asarray(image, np.float32)
         image -= self.mean
+        image = image.transpose((2, 0, 1))
         if self.is_mirror:
             flip = np.random.choice(2) * 2 - 1
             image = image[:, :, ::flip]
-            #label = label[:, ::flip]
         return (image.copy(),name), label.copy()#, np.array(size), name, index
 
 
