@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 import numpy as np
 import pdb
+import math
 from torchvision import datasets, models, transforms
 import torchvision.models as models
 from torch.utils import data
@@ -27,6 +28,7 @@ TRAIN_DATA_DIRECTORY = '/home/dg777/project/Satellite_Images'
 TRAIN_DATA_LIST_PATH = '/home/dg777/project/Satellite_Images/UCMImageSets/train.txt' # TODO: MAKE NEW TEXT FILE
 TEST_DATA_DIRECTORY = '/home/dg777/project/Satellite_Images'
 TEST_DATA_LIST_PATH = '/home/dg777/project/Satellite_Images/UCMImageSets/test.txt' # TODO: MAKE NEW TEXT FILE
+
 
 #### Argument Parser
 def get_arguments():
@@ -59,13 +61,28 @@ def get_arguments():
                         help="Path to the file listing the images in the dataset.") 
     parser.add_argument("--labeled-ratio", type=str, default="0.05",
                         help="labeled ratio")
+    parser.add_argument("--alpha", type=str, default="0.1",
+                        help="alpha for initial pool")
+    parser.add_argument("--beta", type=str, default="0.5",
+                        help="beta for number of images to learn on")
  
     return parser.parse_args()
 
 args = get_arguments()
 
+ALPHA = float(args.alpha)
+BETA = float(args.beta)
+
 N_total = 1679
+labeled_ratios = [0.02, 0.05, 0.125]
+initial_pool_dict = {}
+for i in labeled_ratios:
+    initial_pool_size = ALPHA * i * N_total
+    initial_pool_dict[str(i)] = math.ceil(initial_pool_size)
+
+print(initial_pool_dict)
 # initial pool size = 0.1*(labeled_ratio*N_total)
+'''
 initial_pool_dict = {"0.02":4,
 "0.05":8,
 "0.125":21,
@@ -73,7 +90,7 @@ initial_pool_dict = {"0.02":4,
 "0.33":56,
 "0.5":85
 }
-
+'''
 names_array = ['agricultural', 'airplane', 'baseballdiamond', 'beach', 'buildings', 'chapparal', 'denseresidential', 'forest', 'freeway',
 'golfcourse', 'harbor', 'intersection', 'mediumresidential', 'mobilehomepark', 'overpass', 'parkinglot', 'river', 'runway', 'sparseresidential', 'storagetanks','tenniscourt']
 
@@ -185,7 +202,7 @@ X_pool = np.delete(X_train, initial_idx, axis=0)
 names_pool = np.delete(name, initial_idx, axis=0)
 y_pool = np.delete(y_train, initial_idx, axis=0)
 #print(np.shape(X_pool), 'X_pool')
-print(y_pool[:20], 'y_pool')
+#print(y_pool[:20], 'y_pool')
 
 #### Active Learner
 
@@ -238,15 +255,15 @@ n_queries  = target/query_samples_per_iter
 print("n_initial = ", n_initial)
 target = 10*n_initial # 11 - 0.05, 10 - 0.125
 print("target = ", target)
-query_samples_per_iter = int(np.ceil(0.5*n_initial))
+query_samples_per_iter = int(np.ceil(BETA*n_initial))
 print("query_samples_per_iter = ", query_samples_per_iter)
 n_queries  = int(np.ceil(target/query_samples_per_iter))
-
+print("Number of Queries: ", n_queries)
 
 
 for idx in range(n_queries):
     print('Query no. %d' % (idx + 1))
-    print(n_queries)
+    #print(n_queries)
     #import pdb; pdb.set_trace()    
     #X_pool = X_pool.detach().numpy()
     #y_pool = y_pool.detach().numpy()
@@ -328,8 +345,8 @@ for idx in range(n_queries):
 names_arr = np.array(names[:target])
 prediction_prob_arr = np.array(prediction_probabilities[:target])
 
-names_file = os.path.join(dir_name, args.query_strategy + '_names_'+ args.labeled_ratio + '.npy')
-probs_file = os.path.join(dir_name, args.query_strategy + '_probs_'+ args.labeled_ratio + '.npy')
+names_file = os.path.join(dir_name, args.query_strategy + '_names_'+ args.labeled_ratio + '_'+ args.alpha + '_' + args.beta + '.npy')
+probs_file = os.path.join(dir_name, args.query_strategy + '_probs_'+ args.labeled_ratio + '_'+ args.alpha + '_' + args.beta + '.npy')
 
 np.save(names_file, names_arr) 
 np.save(probs_file, prediction_prob_arr)

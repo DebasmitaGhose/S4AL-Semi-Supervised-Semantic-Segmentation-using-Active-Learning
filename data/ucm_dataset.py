@@ -37,7 +37,7 @@ class UCMDataSet(data.Dataset):
             template = re.compile("([a-zA-Z]+)([0-9]+)") 
             class_name = template.match(name).groups()[0] 
             class_id = self.class_map[class_name]
-            print(class_id)     
+            #print(class_id)     
             self.files.append({
                 "img": img_file,
                 "label": class_id,

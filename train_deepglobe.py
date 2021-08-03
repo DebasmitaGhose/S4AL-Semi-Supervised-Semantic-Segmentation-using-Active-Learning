@@ -68,7 +68,7 @@ args = get_arguments()
 N_total = 642
 # initial pool size = 0.1*(labeled_ratio*N_total)
 initial_pool_dict = {"0.02":1,
-"0.05":2,
+"0.05":3,
 "0.125":8
 }
 
@@ -231,8 +231,9 @@ query_samples_per_iter = np.floor(0.1*n_inital)
 
 n_queries  = target/query_samples_per_iter
 '''
+#print(n_initial, "n_initial")
 print("n_initial = ", n_initial)
-target = 10*n_initial # 11 - 0.05, 10 - 0.125
+target = 10*n_initial # 11 - 0.05, 10 - 0.125, deepglobe - 0.02 - 12 ,0.05 - 11
 print("target = ", target)
 query_samples_per_iter = int(np.ceil(0.5*n_initial))
 print("query_samples_per_iter = ", query_samples_per_iter)
