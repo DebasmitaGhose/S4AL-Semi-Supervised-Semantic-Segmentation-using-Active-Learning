@@ -253,7 +253,7 @@ query_samples_per_iter = np.floor(0.1*n_inital)
 n_queries  = target/query_samples_per_iter
 '''
 print("n_initial = ", n_initial)
-target = 10*n_initial # 11 - 0.05, 10 - 0.125
+target = math.ceil(float(args.labeled_ratio) * N_total) #10*n_initial # 11 - 0.05, 10 - 0.125
 print("target = ", target)
 query_samples_per_iter = int(np.ceil(BETA*n_initial))
 print("query_samples_per_iter = ", query_samples_per_iter)
